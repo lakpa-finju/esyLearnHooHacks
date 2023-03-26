@@ -1,6 +1,6 @@
 body {
   font-family: "Open Sans", sans-serif;
-  color: #1414db;
+  color: Blue;
 }
 
 /*this is original*/
@@ -34,9 +34,6 @@ h6 {
     font-size: 50px;
     color: #fff;
     text-align: center;
-    -webkit-animation: glow 1s ease-in-out infinite alternate;
-    -moz-animation: glow 1s ease-in-out infinite alternate;
-    animation: glow 1s ease-in-out infinite alternate;
   }
   
   @-webkit-keyframes glow {
@@ -53,6 +50,7 @@ h6 {
   transition: all 0.5s;
   z-index: 997;
   border-bottom: 1px solid rgba(9, 226, 34, 0.1);
+  text-align: center;
 }
 
 .registerbtn {
@@ -106,4 +104,8 @@ h6 {
 .registerbtn:hover span:after {
   opacity: 1;
   right: 0;
+}
+
+.column2{
+  color: white;
 }
