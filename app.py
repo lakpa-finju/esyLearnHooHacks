@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.secret_key = "LakpaIgnas"
 
 #open AI reference Key
-openai.api_key ="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"
+openai.api_key =""
 def openai_response(inputPrompt):
     """This function gets inputPromt as an input, sends the input prompt to the openai backend and returns the LLm response
     Args:
