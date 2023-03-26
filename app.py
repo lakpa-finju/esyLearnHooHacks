@@ -1,16 +1,17 @@
+#importing python speech_recognition module
+import speech_recognition as sr
 #importing flask and required functions
 from flask import logging, Flask, render_template, request, flash
 #importing openai api
 import openai
 #importing python text to speech module
 import pyttsx3 
-#importing python speech_recognition module
-import speech_recognition as sr
 
+app = Flask(__name__)
+app.secret_key = "LakpaIgnas"
 
-#api reference key
-openai.api_key = ""
-
+#open AI reference Key
+openai.api_key ="" 
 def openai_response(inputPrompt):
     """This function gets inputPromt as an input, sends the input prompt to the openai backend and returns the LLm response
     Args:
@@ -20,13 +21,14 @@ def openai_response(inputPrompt):
         model="text-davinci-003",
         prompt=inputPrompt,
         temperature=0.7,
-        max_tokens=256,
+        max_tokens=1000,
         top_p=1,
         frequency_penalty=0,
         presence_penalty=0
       )
-    LLMResponse = response.choices.text[0]
+    LLMResponse = response.choices[0].text
     return LLMResponse
+
 
 def textToSpeech(stringFile):
     """TextToSpeech function takes in string file and outputs the audio file equivalent to the given input file.
@@ -34,40 +36,39 @@ def textToSpeech(stringFile):
         textFile = file containing contents written in English
     """
     engine = pyttsx3.init()
+    voice = engine.getProperty('voice')
+    engine.setProperty('voice', voice[1])
+    rate = engine.getProperty('rate')
+    engine.setProperty('rate', 110)
     engine.say(stringFile)
     engine.runAndWait()
 
-app = Flask(__name__)
-app.secret_key = "IgnasLakpa"
-
 @app.route('/')
 def index():
-    flash("Welcome to EsyLearn")
     return render_template('index.html')
+
+@app.route('/audio_to_text/')
+def audio_to_text():
+    flash(" Press Start to start recording audio and press Stop to end recording audio")
+    return render_template('audio_to_text.html')
 
 @app.route('/audio', methods=['POST'])
 def audio():
-    #initializing the speech recognizer
     r = sr.Recognizer()
-    
-    with open('upload/audio.wav', 'wb') as fyle:
-        fyle.write(request.data)
+    with open('upload/audio.wav', 'wb') as f:
+        f.write(request.data)
   
     with sr.AudioFile('upload/audio.wav') as source:
-        #taking the source file and recording 
-        audio_data = r.record(source) 
+        audio_data = r.record(source)
         try:
-            #sending the audio file to convert to the text string
-            textEquivalent = r.recognize_google(audio_data, language='en-IN', show_all=True)
+            text = r.recognize_google(audio_data, language='en-IN',show_all=False)
         except sr.UnknownValueError:
             print("Could not understand audio")
         except sr.RequestError as e:
             print("Error: Could not request results from Google Speech Recognition service")
-    
-    #LLMResponse = openai_response(textEquivalent)
-    #textToSpeech(LLMResponse)
-    print(textEquivalent)
-    return textEquivalent  
+    LLMResponse = openai_response(text)
+    textToSpeech(LLMResponse)
+    return str(text+'\n'+LLMResponse)
 
 
 if __name__ == "__main__":
