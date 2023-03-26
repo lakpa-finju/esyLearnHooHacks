@@ -43,7 +43,7 @@ app.secret_key = "IgnasLakpa"
 @app.route('/')
 def index():
     flash(" Welcome to EsyLearn")
-    return render_template('index.html')
+    return render_template('templates/index.html')
 
 @app.route('/audio', methods=['POST'])
 def audio():
@@ -63,9 +63,9 @@ def audio():
         except sr.RequestError as e:
             print("Error: Could not request results from Google Speech Recognition service")
     
-    LLMResponse = openai_response(textEquivalent)
-    textToSpeech(LLMResponse)
-    #return textEquivalent  
+    #LLMResponse = openai_response(textEquivalent)
+    #textToSpeech(LLMResponse)
+    return textEquivalent  
 
 
 if __name__ == "__main__":
