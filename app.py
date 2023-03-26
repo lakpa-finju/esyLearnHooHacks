@@ -1,7 +1,7 @@
 #importing python speech_recognition module
 import speech_recognition as sr
 #importing flask and required functions
-from flask import logging, Flask, render_template, request, flash
+from flask import logging, Flask, render_template, request, flash, stream_with_context, Response
 #importing openai api
 import openai
 #importing python text to speech module
@@ -11,7 +11,7 @@ app = Flask(__name__)
 app.secret_key = "LakpaIgnas"
 
 #open AI reference Key
-openai.api_key ="" 
+openai.api_key ="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"
 def openai_response(inputPrompt):
     """This function gets inputPromt as an input, sends the input prompt to the openai backend and returns the LLm response
     Args:
@@ -35,6 +35,7 @@ def textToSpeech(stringFile):
     Args:
         textFile = file containing contents written in English
     """
+
     engine = pyttsx3.init()
     voice = engine.getProperty('voice')
     engine.setProperty('voice', voice[1])
@@ -42,6 +43,8 @@ def textToSpeech(stringFile):
     engine.setProperty('rate', 110)
     engine.say(stringFile)
     engine.runAndWait()
+    return
+
 
 @app.route('/')
 def index():
@@ -66,10 +69,12 @@ def audio():
             print("Could not understand audio")
         except sr.RequestError as e:
             print("Error: Could not request results from Google Speech Recognition service")
+    
     LLMResponse = openai_response(text)
     textToSpeech(LLMResponse)
-    return str(text+'\n'+LLMResponse)
+    
+    return LLMResponse
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
