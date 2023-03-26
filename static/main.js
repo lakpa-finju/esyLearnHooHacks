@@ -1,232 +1,184 @@
-/**
-* Template Name: KnightOne
-* Updated: Mar 10 2023 with Bootstrap v5.2.3
-* Template URL: https://bootstrapmade.com/knight-simple-one-page-bootstrap-template/
-* Author: BootstrapMade.com
-* License: https://bootstrapmade.com/license/
+/* Copyright 2013 Chris Wilson
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 */
-(function() {
-  "use strict";
 
-  /**
-   * Easy selector helper function
-   */
-  const select = (el, all = false) => {
-    el = el.trim()
-    if (all) {
-      return [...document.querySelectorAll(el)]
+window.AudioContext = window.AudioContext || window.webkitAudioContext;
+
+var audioContext = new AudioContext();
+var audioInput = null,
+    realAudioInput = null,
+    inputPoint = null,
+    audioRecorder = null;
+var rafID = null;
+var analyserContext = null;
+var canvasWidth, canvasHeight;
+var recIndex = 0;
+
+
+function gotBuffers(buffers) {
+    audioRecorder.exportMonoWAV(doneEncoding);
+}
+
+function doneEncoding(soundBlob) {
+    // fetch('/audio', {method: "POST", body: soundBlob}).then(response => $('#output').text(response.text()))
+    fetch('/audio', {method: "POST", body: soundBlob}).then(response => response.text().then(text => {
+        document.getElementById('output').innerHTML =  text;
+    }));
+    recIndex++;
+}
+
+function stopRecording() {
+    // stop recording
+    audioRecorder.stop();
+    document.getElementById('stop').disabled = true;
+    document.getElementById('start').removeAttribute('disabled');
+    audioRecorder.getBuffers(gotBuffers);
+}
+
+function startRecording() {
+
+    // start recording
+    if (!audioRecorder)
+        return;
+    document.getElementById('start').disabled = true;
+    document.getElementById('stop').removeAttribute('disabled');
+    audioRecorder.clear();
+    audioRecorder.record();
+}
+
+function convertToMono(input) {
+    var splitter = audioContext.createChannelSplitter(2);
+    var merger = audioContext.createChannelMerger(2);
+
+    input.connect(splitter);
+    splitter.connect(merger, 0, 0);
+    splitter.connect(merger, 0, 1);
+    return merger;
+}
+
+function cancelAnalyserUpdates() {
+    window.cancelAnimationFrame(rafID);
+    rafID = null;
+}
+
+function updateAnalysers(time) {
+    if (!analyserContext) {
+        var canvas = document.getElementById("analyser");
+        canvasWidth = canvas.width;
+        canvasHeight = canvas.height;
+        analyserContext = canvas.getContext('2d');
+    }
+
+    // analyzer draw code here
+    {
+        var SPACING = 3;
+        var BAR_WIDTH = 1;
+        var numBars = Math.round(canvasWidth / SPACING);
+        var freqByteData = new Uint8Array(analyserNode.frequencyBinCount);
+
+        analyserNode.getByteFrequencyData(freqByteData);
+
+        analyserContext.clearRect(0, 0, canvasWidth, canvasHeight);
+        analyserContext.fillStyle = '#F6D565';
+        analyserContext.lineCap = 'round';
+        var multiplier = analyserNode.frequencyBinCount / numBars;
+
+        // Draw rectangle for each frequency bin.
+        for (var i = 0; i < numBars; ++i) {
+            var magnitude = 0;
+            var offset = Math.floor(i * multiplier);
+            // gotta sum/average the block, or we miss narrow-bandwidth spikes
+            for (var j = 0; j < multiplier; j++)
+                magnitude += freqByteData[offset + j];
+            magnitude = magnitude / multiplier;
+            var magnitude2 = freqByteData[i * multiplier];
+            analyserContext.fillStyle = "hsl( " + Math.round((i * 360) / numBars) + ", 100%, 50%)";
+            analyserContext.fillRect(i * SPACING, canvasHeight, BAR_WIDTH, -magnitude);
+        }
+    }
+
+    rafID = window.requestAnimationFrame(updateAnalysers);
+}
+
+function toggleMono() {
+    if (audioInput != realAudioInput) {
+        audioInput.disconnect();
+        realAudioInput.disconnect();
+        audioInput = realAudioInput;
     } else {
-      return document.querySelector(el)
+        realAudioInput.disconnect();
+        audioInput = convertToMono(realAudioInput);
     }
-  }
 
-  /**
-   * Easy event listener function
-   */
-  const on = (type, el, listener, all = false) => {
-    let selectEl = select(el, all)
-    if (selectEl) {
-      if (all) {
-        selectEl.forEach(e => e.addEventListener(type, listener))
-      } else {
-        selectEl.addEventListener(type, listener)
-      }
-    }
-  }
+    audioInput.connect(inputPoint);
+}
 
-  /**
-   * Easy on scroll event listener 
-   */
-  const onscroll = (el, listener) => {
-    el.addEventListener('scroll', listener)
-  }
+function gotStream(stream) {
+    document.getElementById('start').removeAttribute('disabled');
 
-  /**
-   * Navbar links active state on scroll
-   */
-  let navbarlinks = select('#navbar .scrollto', true)
-  const navbarlinksActive = () => {
-    let position = window.scrollY + 200
-    navbarlinks.forEach(navbarlink => {
-      if (!navbarlink.hash) return
-      let section = select(navbarlink.hash)
-      if (!section) return
-      if (position >= section.offsetTop && position <= (section.offsetTop + section.offsetHeight)) {
-        navbarlink.classList.add('active')
-      } else {
-        navbarlink.classList.remove('active')
-      }
-    })
-  }
-  window.addEventListener('load', navbarlinksActive)
-  onscroll(document, navbarlinksActive)
+    inputPoint = audioContext.createGain();
 
-  /**
-   * Scrolls to an element with header offset
-   */
-  const scrollto = (el) => {
-    let header = select('#header')
-    let offset = header.offsetHeight
+    // Create an AudioNode from the stream.
+    realAudioInput = audioContext.createMediaStreamSource(stream);
+    audioInput = realAudioInput;
+    audioInput.connect(inputPoint);
 
-    let elementPos = select(el).offsetTop
-    window.scrollTo({
-      top: elementPos - offset,
-      behavior: 'smooth'
-    })
-  }
+//    audioInput = convertToMono( input );
 
-  /**
-   * Toggle .header-scrolled class to #header when page is scrolled
-   */
-  let selectHeader = select('#header')
-  if (selectHeader) {
-    const headerScrolled = () => {
-      if (window.scrollY > 100) {
-        selectHeader.classList.add('header-scrolled')
-      } else {
-        selectHeader.classList.remove('header-scrolled')
-      }
-    }
-    window.addEventListener('load', headerScrolled)
-    onscroll(document, headerScrolled)
-  }
+    analyserNode = audioContext.createAnalyser();
+    analyserNode.fftSize = 2048;
+    inputPoint.connect(analyserNode);
 
-  /**
-   * Back to top button
-   */
-  let backtotop = select('.back-to-top')
-  if (backtotop) {
-    const toggleBacktotop = () => {
-      if (window.scrollY > 100) {
-        backtotop.classList.add('active')
-      } else {
-        backtotop.classList.remove('active')
-      }
-    }
-    window.addEventListener('load', toggleBacktotop)
-    onscroll(document, toggleBacktotop)
-  }
+    audioRecorder = new Recorder(inputPoint);
 
-  /**
-   * Mobile nav toggle
-   */
-  on('click', '.mobile-nav-toggle', function(e) {
-    select('#navbar').classList.toggle('navbar-mobile')
-    this.classList.toggle('bi-list')
-    this.classList.toggle('bi-x')
-  })
+    zeroGain = audioContext.createGain();
+    zeroGain.gain.value = 0.0;
+    inputPoint.connect(zeroGain);
+    zeroGain.connect(audioContext.destination);
+    updateAnalysers();
+}
 
-  /**
-   * Mobile nav dropdowns activate
-   */
-  on('click', '.navbar .dropdown > a', function(e) {
-    if (select('#navbar').classList.contains('navbar-mobile')) {
-      e.preventDefault()
-      this.nextElementSibling.classList.toggle('dropdown-active')
-    }
-  }, true)
+function initAudio() {
+    if (!navigator.getUserMedia)
+        navigator.getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+    if (!navigator.cancelAnimationFrame)
+        navigator.cancelAnimationFrame = navigator.webkitCancelAnimationFrame || navigator.mozCancelAnimationFrame;
+    if (!navigator.requestAnimationFrame)
+        navigator.requestAnimationFrame = navigator.webkitRequestAnimationFrame || navigator.mozRequestAnimationFrame;
 
-  /**
-   * Scrool with ofset on links with a class name .scrollto
-   */
-  on('click', '.scrollto', function(e) {
-    if (select(this.hash)) {
-      e.preventDefault()
+    navigator.getUserMedia(
+        {
+            "audio": {
+                "mandatory": {
+                    "googEchoCancellation": "false",
+                    "googAutoGainControl": "false",
+                    "googNoiseSuppression": "false",
+                    "googHighpassFilter": "false"
+                },
+                "optional": []
+            },
+        }, gotStream, function (e) {
+            alert('Error getting audio');
+            console.log(e);
+        });
+}
 
-      let navbar = select('#navbar')
-      if (navbar.classList.contains('navbar-mobile')) {
-        navbar.classList.remove('navbar-mobile')
-        let navbarToggle = select('.mobile-nav-toggle')
-        navbarToggle.classList.toggle('bi-list')
-        navbarToggle.classList.toggle('bi-x')
-      }
-      scrollto(this.hash)
-    }
-  }, true)
+window.addEventListener('load', initAudio);
 
-  /**
-   * Scroll with ofset on page load with hash links in the url
-   */
-  window.addEventListener('load', () => {
-    if (window.location.hash) {
-      if (select(window.location.hash)) {
-        scrollto(window.location.hash)
-      }
-    }
-  });
-
-  /**
-   * Preloader
-   */
-  let preloader = select('#preloader');
-  if (preloader) {
-    window.addEventListener('load', () => {
-      preloader.remove()
+function unpause() {
+    document.getElementById('init').style.display = 'none';
+    audioContext.resume().then(() => {
+        console.log('Playback resumed successfully');
     });
-  }
-
-  /**
-   * Initiate glightbox 
-   */
-  const glightbox = GLightbox({
-    selector: '.glightbox'
-  });
-
-  /**
-   * Porfolio isotope and filter
-   */
-  window.addEventListener('load', () => {
-    let portfolioContainer = select('.portfolio-container');
-    if (portfolioContainer) {
-      let portfolioIsotope = new Isotope(portfolioContainer, {
-        itemSelector: '.portfolio-item'
-      });
-
-      let portfolioFilters = select('#portfolio-flters li', true);
-
-      on('click', '#portfolio-flters li', function(e) {
-        e.preventDefault();
-        portfolioFilters.forEach(function(el) {
-          el.classList.remove('filter-active');
-        });
-        this.classList.add('filter-active');
-
-        portfolioIsotope.arrange({
-          filter: this.getAttribute('data-filter')
-        });
-
-      }, true);
-    }
-
-  });
-
-  /**
-   * Initiate portfolio lightbox 
-   */
-  const portfolioLightbox = GLightbox({
-    selector: '.portfolio-lightbox'
-  });
-
-  /**
-   * Portfolio details slider
-   */
-  new Swiper('.portfolio-details-slider', {
-    speed: 400,
-    loop: true,
-    autoplay: {
-      delay: 5000,
-      disableOnInteraction: false
-    },
-    pagination: {
-      el: '.swiper-pagination',
-      type: 'bullets',
-      clickable: true
-    }
-  });
-
-  /**
-   * Initiate Pure Counter 
-   */
-  new PureCounter();
-
-})()
+}
