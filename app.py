@@ -42,8 +42,8 @@ app.secret_key = "IgnasLakpa"
 
 @app.route('/')
 def index():
-    flash(" Welcome to EsyLearn")
-    return render_template('templates/index.html')
+    flash("Welcome to EsyLearn")
+    return render_template('index.html')
 
 @app.route('/audio', methods=['POST'])
 def audio():
