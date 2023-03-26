@@ -5,6 +5,7 @@
 EsyLearn is a web application that makes learning process more organized, fun, engaging, and uplifting for everyone. Be able to quickly get answers to almost any questions you hold!
 
 ### How to Use:
+*) First upload the OpenAI API's key to the app.py file
 1) Press "Let's do it" button
 2) Start recording your question
 3) Stop the recording
