@@ -49,6 +49,7 @@ def index():
 def audio():
     #initializing the speech recognizer
     r = sr.Recognizer()
+    
     with open('upload/audio.wav', 'wb') as fyle:
         fyle.write(request.data)
   
@@ -65,6 +66,7 @@ def audio():
     
     #LLMResponse = openai_response(textEquivalent)
     #textToSpeech(LLMResponse)
+    print(textEquivalent)
     return textEquivalent  
 
 
